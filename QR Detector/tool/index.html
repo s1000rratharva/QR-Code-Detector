@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Risk Scanner</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background-color: #f0f0f0;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input[type=file] {
+      margin: 1rem 0;
+    }
+    #result {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>QR Code Risk Scanner</h1>
+    <input type="file" accept="image/*" id="upload" />
+    <canvas id="canvas" style="display: none"></canvas>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const upload = document.getElementById("upload");
+    const canvas = document.getElementById("canvas");
+    const result = document.getElementById("result");
+
+    upload.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = function (event) {
+        img.onload = function () {
+          const ctx = canvas.getContext("2d");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+          if (code) {
+            analyzeURL(code.data);
+          } else {
+            result.innerHTML = `<div style="color: red">No QR code detected.</div>`;
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function analyzeURL(url) {
+      let riskLevel = "Safe";
+      let warning = "Looks OK";
+
+      const suspiciousDomains = ["bit.ly", "tinyurl.com", "shorte.st", "ow.ly"];
+      const ipPattern = /\b\d{1,3}(?:\.\d{1,3}){3}\b/;
+
+      try {
+        const parsed = new URL(url);
+        const hostname = parsed.hostname;
+
+        if (ipPattern.test(hostname)) {
+          riskLevel = "High";
+          warning = "URL uses an IP address instead of a domain.";
+        } else if (suspiciousDomains.some(domain => hostname.includes(domain))) {
+          riskLevel = "Medium";
+          warning = "URL uses a known shortening service.";
+        }
+
+        result.innerHTML = `
+          <div><strong>Decoded URL:</strong> <a href="${url}" target="_blank">${url}</a></div>
+          <div><strong>Risk Level:</strong> ${riskLevel}</div>
+          <div><strong>Notes:</strong> ${warning}</div>
+        `;
+      } catch (err) {
+        result.innerHTML = `<div style="color: red">Decoded text is not a valid URL: ${url}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>
