@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>QR Code Risk Scanner</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <style>
@@ -26,6 +26,7 @@
       margin-top: 1rem;
       padding: 1rem;
       border-radius: 8px;
+      background-color: #f9f9f9;
     }
   </style>
 </head>
@@ -33,7 +34,7 @@
   <div class="container">
     <h1>QR Code Risk Scanner</h1>
     <input type="file" accept="image/*" id="upload" />
-    <canvas id="canvas" style="display: none"></canvas>
+    <canvas id="canvas" style="display: none;"></canvas>
     <div id="result"></div>
   </div>
 
@@ -74,6 +75,8 @@
       let warning = "Looks OK";
 
       const suspiciousDomains = ["bit.ly", "tinyurl.com", "shorte.st", "ow.ly"];
+      const riskyTLDs = [".xyz", ".top", ".click", ".buzz", ".tk"];
+      const riskyWords = ["login", "verify", "account", "secure", "update"];
       const ipPattern = /\b\d{1,3}(?:\.\d{1,3}){3}\b/;
 
       try {
@@ -86,6 +89,18 @@
         } else if (suspiciousDomains.some(domain => hostname.includes(domain))) {
           riskLevel = "Medium";
           warning = "URL uses a known shortening service.";
+        } else if (parsed.protocol !== "https:") {
+          riskLevel = "Medium";
+          warning = "URL does not use HTTPS.";
+        } else if (riskyTLDs.some(tld => hostname.endsWith(tld))) {
+          riskLevel = "Medium";
+          warning = "URL uses a suspicious domain extension.";
+        } else if (hostname.split(".").length > 3) {
+          riskLevel = "Medium";
+          warning = "URL has too many subdomains.";
+        } else if (riskyWords.some(word => url.toLowerCase().includes(word))) {
+          riskLevel = "Medium";
+          warning = "URL contains suspicious words.";
         }
 
         result.innerHTML = `
